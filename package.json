@@ -1,0 +1,10 @@
+{
+  "name": "application-name",
+  "version": "0.0.1",
+  "description": "Gathers data from iss website: http://spacestationlive.nasa.gov/displays/ethosDisplay1.html",
+  "private": true,
+  "dependencies": {
+    "express": "3.x",
+    "promise": "^7.0.1"
+  }
+}
