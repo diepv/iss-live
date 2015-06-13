@@ -26,13 +26,21 @@ var createSession = Promise.denodeify(netSocket);
 var controlSession = Promise.denodeify(controlSessionRequest);
 var bindSession = Promise.denodeify(bindSessionRequest);
 function start(){
-    return createSession().then(function(res){ return controlSession(res);}).done(function(resId){bindSession(resId);});
+    return new Promise(function(resolve,reject){
+       createSession().then(function(res){ return controlSession(res);}).then(function(resId){return bindSession(resId);}).done(function(boolStatus){resolve(boolStatus);});
+    });
+
 }
 
 
 exports.update = function(req,res){
     startTime = Date.now();
-    setInterval(start,5000);
+    console.log('about to start everyting, timestamp: ',startTime);
+    start().done(function(done){
+        console.log('finished start promise: ',done);
+        console.log('finished start promise timestamp:', Date.now());
+    });
+
 };
 
 function websocketTest(){
@@ -125,10 +133,9 @@ function netSocket(){
     });
 }
 
-function bindSessionRequest(sessionId,callback){
+function bindSessionRequest(sessionId){
+    return new Promise(function(fulfill, reject){
         console.log("STARTING BIND SESSSION, timestamp: ",Date.now());
-        //CREATE FUNCTION TO GET DATA BY CONSTOLE SET NAME
-        //var consoleSet = getEthosSet();
         content = "LS_session="+sessionId+"&LS_phase=7903&LS_domain=nasa.gov&";
 
         request = [
@@ -157,6 +164,7 @@ function bindSessionRequest(sessionId,callback){
             var bindSessionTime = 0;
 
             s.on('data', function(data){
+                console.log('data size: ',data.length);
                 bindSessionTime += (Date.now() - bindSessionTimeTracker);
                 bindSessionTimeTracker = Date.now();
                 //console.log(data);
@@ -173,65 +181,107 @@ function bindSessionRequest(sessionId,callback){
             });
 
             s.on('end',function(){
+                console.log("end bind session triggered (prior to while loop), timestamp: ", Date.now());
 
                 var batchString = batch.toString();
+
+                //fs.writeFile('../dataHold', batchString, 'utf8', function(err){
+                //    console.log("writing file...");
+                //    if(err){
+                //        ///STOP RIGHT HERE
+                //        console.log("writing file err");
+                //        console.log(err);
+                //    }else{
+                //        console.log('wrote file');
+                //    }
+                //});
                 var batchObject = [];
-                var startData = batchString.indexOf("'{\"Name\":");
-                var initialDataString = batchString.substring(startData);
-                //while there's still something left of the batchString....
-                while(initialDataString.length>0){
-                    //find the next nearest ending.
-                    var nearestEnd = initialDataString.indexOf("}','{");
-                    var nearestEndType2 = initialDataString.indexOf("}');");
-
-                    //compare which ending is closer.
-                    if(nearestEnd<nearestEndType2){
-                        var dataEntry = initialDataString.substring(1,nearestEnd+1);
-                        batchObject.push(dataEntry);
-                        initialDataString = initialDataString.substring(nearestEnd+3);
-                        var nextDataEntryIndex = initialDataString.indexOf("'{\"Name\":");
-                        if(nextDataEntryIndex<0){
-                            initialDataString ="";
+                //var startData = batchString.indexOf("'{\"Name\":");
+                //var initialDataString = batchString.substring(startData);
+                var resultArray = batchString.match(/(\'{"Name).*("}\'\);)/g);
+                console.log("number of data segments",resultArray.length);
+                resultArray.forEach(function(item,itemIndex){
+                    //console.log('jsonObject at length-4: ',item[item.length-4]);
+                    var jsonObject = item.substring(1,item.length-3);
+                    //jsonObject = jsonObject.replace(/'\);/g,'');
+                    jsonObject = jsonObject.replace(/','+/g,",");
+                    fs.appendFile('dataHold.txt', jsonObject, function (err) {
+                        if(err){
+                            console.log("..appending, error? : ",err);
                         }else{
-                            initialDataString = initialDataString.substring(nextDataEntryIndex);
+                            //console.log('saved to file');
                         }
+
+                    });
+                    console.log("itemItndex: ",itemIndex);
+                    if(itemIndex==resultArray.length-1){
+                        console.log('itemIndex  == ', itemIndex);
+                        batchObject += jsonObject;
                     }else{
-                        var endEnd = nearestEndType2;
-                        if(endEnd>-1){
-                            var dataEntry =initialDataString.substring(1,endEnd+1);
-                            //console.log(dataEntry);
-                            batchObject.push(dataEntry);
-                            initialDataString = initialDataString.substring(endEnd+1);
-                            var nextDataEntryIndex = initialDataString.indexOf("'{\"Name\":");
-                            if(nextDataEntryIndex<0){
-                                initialDataString ="";
-                            }else{
-                                initialDataString = initialDataString.substring(nextDataEntryIndex);
-                            }
-                        }else{
-                            initialDataString = "";
-                            console.log('ended funny? data string left:',initialDataString);
-                        }
-                        //we are at the end. initial Data String length set to 0.
-
+                        batchObject += jsonObject +",";
                     }
 
-                }
-                console.log('timestamp after while loop has ended: ',Date.now());
-                console.log('batch item number 100', batchObject[100]);
-                console.log('batch length', batchObject.length);
-                console.log('batch total  time ', bindSessionTime);
-                console.log('batch average time ', bindSessionTime/batchObject.length);
-                saveToDbSimple(batchObject, function(done){
-                    startTime = Date.now();
-                    callback(true);
-                    //start();
                 });
+                console.log("batchObject parsed: ",JSON.parse("["+batchObject+"]").length);
+                //while there's still something left of the batchString....
+                //while(initialDataString.length>0){
+                //    //find the next nearest ending.
+                //    var nearestEnd = initialDataString.indexOf("}','{");
+                //    var nearestEndType2 = initialDataString.indexOf("}');");
+                //
+                //    //compare which ending is closer.
+                //    if(nearestEnd<nearestEndType2){
+                //        var dataEntry = initialDataString.substring(1,nearestEnd+1);
+                //        batchObject.push(dataEntry);
+                //        initialDataString = initialDataString.substring(nearestEnd+3);
+                //        var nextDataEntryIndex = initialDataString.indexOf("'{\"Name\":");
+                //        if(nextDataEntryIndex<0){
+                //            initialDataString ="";
+                //        }else{
+                //            initialDataString = initialDataString.substring(nextDataEntryIndex);
+                //        }
+                //    }else{
+                //        var endEnd = nearestEndType2;
+                //        if(endEnd>-1){
+                //            var dataEntry =initialDataString.substring(1,endEnd+1);
+                //            //console.log(dataEntry);
+                //            batchObject.push(dataEntry);
+                //            initialDataString = initialDataString.substring(endEnd+1);
+                //            var nextDataEntryIndex = initialDataString.indexOf("'{\"Name\":");
+                //            if(nextDataEntryIndex<0){
+                //                initialDataString ="";
+                //            }else{
+                //                initialDataString = initialDataString.substring(nextDataEntryIndex);
+                //            }
+                //        }else{
+                //            initialDataString = "";
+                //            console.log('ended funny? data string left:',initialDataString);
+                //        }
+                //        //we are at the end. initial Data String length set to 0.
+                //
+                //    }
+                //
+                //}
+                console.log('type of batchObject:',typeof batchObject);
+                console.log('finished processing timestamp: ', Date.now());
+                //console.log("type of batchobject after json parse:",typeof JSON.parse(batchObject));
+                //console.log('timestamp after while loop has ended: ',Date.now());
+                //console.log('batch total  time ', bindSessionTime);
+                //console.log('batch average time ', bindSessionTime/batchObject.length);
+                //saveToDbSimple(JSON.parse(batchObject), function(done){
+                //    console.log('done saving');
+                //    startTime = Date.now();
+                //    console.log('ended bind session, timestamp: ', startTime);
+                //    fulfill(true);
+                //    //start();
+                //});
 
             });
         });
 
         s.connect({port:PORT,host:HOST});
+
+    });
 
 }
 function controlSessionRequest(sessionId){
@@ -301,13 +351,18 @@ function controlSessionRequest(sessionId){
 */
 
 function saveToDbSimple(document,callback){
+    console.log('called saveToDbSimple with documentl ength: ', document.length);
     db.collection("ethos", function(error, collection) {
         if (!error) {
+            console.log('no error, going to for each things');
             document.forEach(function(doc,docIndex){
                 save(doc,collection);
             });
             console.log('saved all');
             callback(true);
+        }else{
+            console.log('savetodbsimple error');
+            callback(error);
         }
     });
 
@@ -322,10 +377,8 @@ function saveToDbSimple(document,callback){
         collection.update(modDoc,modDoc, {upsert: true}, function (err, record) {
             //console.log('time to save:', doc);
             if (!err) {
-                return true;
             } else {
                 console.log("ERROR SAVING, err: ", err);
-                return false;
             }
 
         });
