@@ -36,10 +36,14 @@ function start(){
 exports.update = function(req,res){
     startTime = Date.now();
     console.log('about to start everyting, timestamp: ',startTime);
-    start().done(function(done){
-        console.log('finished start promise: ',done);
-        console.log('finished start promise timestamp:', Date.now());
-    });
+    function gogo(){
+        start().done(function(done){
+            console.log('finished start promise: ',done);
+            console.log('finished start promise timestamp:', Date.now());
+        });
+    }
+    setInterval(gogo,60000);
+
 
 };
 
@@ -185,96 +189,41 @@ function bindSessionRequest(sessionId){
 
                 var batchString = batch.toString();
 
-                //fs.writeFile('../dataHold', batchString, 'utf8', function(err){
-                //    console.log("writing file...");
-                //    if(err){
-                //        ///STOP RIGHT HERE
-                //        console.log("writing file err");
-                //        console.log(err);
-                //    }else{
-                //        console.log('wrote file');
-                //    }
-                //});
-                var batchObject = [];
-                //var startData = batchString.indexOf("'{\"Name\":");
-                //var initialDataString = batchString.substring(startData);
-                var resultArray = batchString.match(/(\'{"Name).*("}\'\);)/g);
-                console.log("number of data segments",resultArray.length);
-                resultArray.forEach(function(item,itemIndex){
-                    //console.log('jsonObject at length-4: ',item[item.length-4]);
-                    var jsonObject = item.substring(1,item.length-3);
-                    //jsonObject = jsonObject.replace(/'\);/g,'');
-                    jsonObject = jsonObject.replace(/','+/g,",");
-                    fs.appendFile('dataHold.txt', jsonObject, function (err) {
-                        if(err){
-                            console.log("..appending, error? : ",err);
-                        }else{
-                            //console.log('saved to file');
-                        }
 
-                    });
-                    console.log("itemItndex: ",itemIndex);
+                var batchObject = '';
+                var resultArray = batchString.match(/(\'{"Name).*("}\'\);)/g);
+
+                console.log("number of data segments",resultArray.length);
+
+                resultArray.forEach(function(item,itemIndex){
+                    var jsonObject = item.substring(1,item.length-3);
+                    jsonObject = jsonObject.replace(/','+/g,",");
+
+                    //fs.appendFile('dataHold.txt', jsonObject, function (err) {
+                    //    if(err){
+                    //        console.log("..appending, error? : ",err);
+                    //    }else{
+                    //        //console.log('saved to file');
+                    //    }
+                    //
+                    //});
                     if(itemIndex==resultArray.length-1){
-                        console.log('itemIndex  == ', itemIndex);
                         batchObject += jsonObject;
                     }else{
                         batchObject += jsonObject +",";
                     }
 
                 });
-                console.log("batchObject parsed: ",JSON.parse("["+batchObject+"]").length);
-                //while there's still something left of the batchString....
-                //while(initialDataString.length>0){
-                //    //find the next nearest ending.
-                //    var nearestEnd = initialDataString.indexOf("}','{");
-                //    var nearestEndType2 = initialDataString.indexOf("}');");
-                //
-                //    //compare which ending is closer.
-                //    if(nearestEnd<nearestEndType2){
-                //        var dataEntry = initialDataString.substring(1,nearestEnd+1);
-                //        batchObject.push(dataEntry);
-                //        initialDataString = initialDataString.substring(nearestEnd+3);
-                //        var nextDataEntryIndex = initialDataString.indexOf("'{\"Name\":");
-                //        if(nextDataEntryIndex<0){
-                //            initialDataString ="";
-                //        }else{
-                //            initialDataString = initialDataString.substring(nextDataEntryIndex);
-                //        }
-                //    }else{
-                //        var endEnd = nearestEndType2;
-                //        if(endEnd>-1){
-                //            var dataEntry =initialDataString.substring(1,endEnd+1);
-                //            //console.log(dataEntry);
-                //            batchObject.push(dataEntry);
-                //            initialDataString = initialDataString.substring(endEnd+1);
-                //            var nextDataEntryIndex = initialDataString.indexOf("'{\"Name\":");
-                //            if(nextDataEntryIndex<0){
-                //                initialDataString ="";
-                //            }else{
-                //                initialDataString = initialDataString.substring(nextDataEntryIndex);
-                //            }
-                //        }else{
-                //            initialDataString = "";
-                //            console.log('ended funny? data string left:',initialDataString);
-                //        }
-                //        //we are at the end. initial Data String length set to 0.
-                //
-                //    }
-                //
-                //}
+                batchObject = JSON.parse("["+batchObject+"]");
+                console.log("batchObject parsed: ",batchObject.length);
                 console.log('type of batchObject:',typeof batchObject);
                 console.log('finished processing timestamp: ', Date.now());
-                //console.log("type of batchobject after json parse:",typeof JSON.parse(batchObject));
-                //console.log('timestamp after while loop has ended: ',Date.now());
-                //console.log('batch total  time ', bindSessionTime);
-                //console.log('batch average time ', bindSessionTime/batchObject.length);
-                //saveToDbSimple(JSON.parse(batchObject), function(done){
-                //    console.log('done saving');
-                //    startTime = Date.now();
-                //    console.log('ended bind session, timestamp: ', startTime);
-                //    fulfill(true);
-                //    //start();
-                //});
+                saveToDbSimple(batchObject, function(done){
+                    console.log('done saving');
+                    startTime = Date.now();
+                    console.log('ended bind session, timestamp: ', startTime);
+                    fulfill(true);
+                });
 
             });
         });
@@ -352,6 +301,8 @@ function controlSessionRequest(sessionId){
 
 function saveToDbSimple(document,callback){
     console.log('called saveToDbSimple with documentl ength: ', document.length);
+    console.log("first item in document: ", document[0]);
+    console.log("typeof first item in document: ",typeof document[0]);
     db.collection("ethos", function(error, collection) {
         if (!error) {
             console.log('no error, going to for each things');
@@ -361,13 +312,14 @@ function saveToDbSimple(document,callback){
             console.log('saved all');
             callback(true);
         }else{
-            console.log('savetodbsimple error');
+            console.log('savetodbsimple error: ',error);
+            console.log('savetodbsimple collection (error): ',collection);
             callback(error);
         }
     });
 
     function save(doc, collection) {
-        doc = JSON.parse(doc);
+        //doc = JSON.parse(doc);
         //console.log('DOC: ', doc);
         var modDoc = {
             Name: doc.Name,
