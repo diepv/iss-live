@@ -98,9 +98,10 @@ function netSocket(){
         var net = require('net');
         //net.createConnection();
         var s = new net.Socket();
-
+        var connectionAttempt = 0;
         s.setEncoding('utf8');
         s.on('connect', function(a){
+            
             //CREATE SESSION AND RETRIEVE SESSION ID
             console.log('socket connect, time from start:', Date.now() - startTime);
             startTime = Date.now();
@@ -123,8 +124,27 @@ function netSocket(){
                 }
             });
             s.on('error', function(e){
-                console.log("ERR FROM CREATE SESSION");
-                console.log(e);
+                connectionAttempt++;
+                console.log("ERR FROM CREATE SESSION within connection event", e);
+                console.log("----Attempting to Reconnect, Trial #:", connectionAttempt);
+                if(connectionAttempt>50){
+                    //send me an email..
+                    var Email = require('email').Email;
+                    var myMsg = new Email({
+                        from:"viviandiep268@gmail.com",
+                        to:"vdiep@mit.edu",
+                        subject:"ERROR - over fifty attempts at iss-live",
+                        body: e.toString()
+                    });
+                    myMsg.send(function(err){
+                        if(err){
+                            console.log('error sending email to vdiep@mit.edu');
+                        }
+                    });
+                }else{
+                                    s.connect({port:PORT, host:HOST});
+                }
+
             });
 
             s.on('end',function(){
@@ -134,6 +154,29 @@ function netSocket(){
         });
 
         s.connect({port:PORT,host:HOST});
+        s.on('error', function(e){
+            connectionAttempt++;
+            console.log("ERR FROM CREATE SESSION within connection event", e);
+            console.log("----Attempting to Reconnect, Trial #:", connectionAttempt);
+            if(connectionAttempt>50){
+                //send me an email..
+                var Email = require('email').Email;
+                var myMsg = new Email({
+                    from:"viviandiep268@gmail.com",
+                    to:"vdiep@mit.edu",
+                    subject:"ERROR - over fifty attempts at iss-live",
+                    body: e.toString()
+                });
+                myMsg.send(function(err){
+                    if(err){
+                        console.log('error sending email to vdiep@mit.edu');
+                    }
+                });
+            }else{
+              s.connect({port:PORT, host:HOST});
+            }
+        });
+
     });
 }
 
