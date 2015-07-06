@@ -101,7 +101,6 @@ function netSocket(){
         var connectionAttempt = 0;
         s.setEncoding('utf8');
         s.on('connect', function(a){
-            
             //CREATE SESSION AND RETRIEVE SESSION ID
             console.log('socket connect, time from start:', Date.now() - startTime);
             startTime = Date.now();
@@ -123,29 +122,6 @@ function netSocket(){
                     //throw new Error("Create Session Response Bad. No Session ID Recognized. ");
                 }
             });
-            s.on('error', function(e){
-                connectionAttempt++;
-                console.log("ERR FROM CREATE SESSION within connection event", e);
-                console.log("----Attempting to Reconnect, Trial #:", connectionAttempt);
-                if(connectionAttempt>50){
-                    //send me an email..
-                    var Email = require('email').Email;
-                    var myMsg = new Email({
-                        from:"viviandiep268@gmail.com",
-                        to:"vdiep@mit.edu",
-                        subject:"ERROR - over fifty attempts at iss-live",
-                        body: e.toString()
-                    });
-                    myMsg.send(function(err){
-                        if(err){
-                            console.log('error sending email to vdiep@mit.edu');
-                        }
-                    });
-                }else{
-                                    s.connect({port:PORT, host:HOST});
-                }
-
-            });
 
             s.on('end',function(){
                 console.log('ended create session, timestamp: ', Date.now());
@@ -154,24 +130,15 @@ function netSocket(){
         });
 
         s.connect({port:PORT,host:HOST});
+
         s.on('error', function(e){
             connectionAttempt++;
             console.log("ERR FROM CREATE SESSION within connection event", e);
             console.log("----Attempting to Reconnect, Trial #:", connectionAttempt);
-            if(connectionAttempt>50){
+            var errorString = e.toString()+" /// timestamp: "+Date.now();
+            if(connectionAttempt>10){
                 //send me an email..
-                var Email = require('email').Email;
-                var myMsg = new Email({
-                    from:"viviandiep268@gmail.com",
-                    to:"vdiep@mit.edu",
-                    subject:"ERROR - over fifty attempts at iss-live",
-                    body: e.toString()
-                });
-                myMsg.send(function(err){
-                    if(err){
-                        console.log('error sending email to vdiep@mit.edu');
-                    }
-                });
+               emailError(e);
             }else{
               s.connect({port:PORT, host:HOST});
             }
@@ -198,6 +165,7 @@ function bindSessionRequest(sessionId){
         var HOST = "push1.jsc.nasa.gov";
         var PORT = 80;
         var net = require('net');
+        var connectionAttempt = 0;
 
         //net.createConnection();
         var s = new net.Socket();
@@ -222,9 +190,6 @@ function bindSessionRequest(sessionId){
                     console.log("ERROR in BIND SESSION");
                 }
 
-            });
-            s.on('error', function(e){
-                console.log("ERROR:",e);
             });
 
             s.on('end',function(){
@@ -272,9 +237,36 @@ function bindSessionRequest(sessionId){
         });
 
         s.connect({port:PORT,host:HOST});
-
+        s.on('error', function(e){
+            connectionAttempt++;
+            console.log("ERR FROM BIND SESSION within connection event", e);
+            console.log("----Attempting to Reconnect, Trial #:", connectionAttempt);
+            var errorString = e.toString()+" /// timestamp: "+Date.now();
+            if(connectionAttempt>10){
+                //send me an email..
+                emailError(e);
+            }else{
+                s.connect({port:PORT, host:HOST});
+            }
+        });
     });
 
+}
+
+function emailError(e){
+    var errorString = e.toString()+" /// timestamp: "+Date.now();
+    var Email = require('email').Email;
+    var myMsg = new Email({
+        from:"viviandiep268@gmail.com",
+        to:"vdiep@mit.edu",
+        subject:"ERROR - over ten attempts at iss-live",
+        body:errorString
+    });
+    myMsg.send(function(err){
+        if(err){
+            console.log('error sending email to vdiep@mit.edu');
+        }
+    });
 }
 function controlSessionRequest(sessionId){
 
@@ -298,6 +290,7 @@ function controlSessionRequest(sessionId){
         var HOST = "push1.jsc.nasa.gov";
         var PORT = 80;
         var net = require('net');
+        var connectionAttempt = 0;
         //net.createConnection();
         var s = new net.Socket();
 
@@ -320,7 +313,16 @@ function controlSessionRequest(sessionId){
             });
         });
         s.on('error', function(e){
-            console.log("ERR FROM CONTROL SESSION; ",e);
+            connectionAttempt++;
+            console.log("ERR FROM CONTROl SESSION within connection event", e);
+            console.log("----Attempting to Reconnect, Trial #:", connectionAttempt);
+            var errorString = e.toString()+" /// timestamp: "+Date.now();
+            if(connectionAttempt>10){
+                //send me an email..
+                emailError(e);
+            }else{
+                s.connect({port:PORT, host:HOST});
+            }
 
         });
 
@@ -366,10 +368,12 @@ function saveToDbSimple(document,callback){
         //console.log('DOC: ', doc);
         var modDoc = {
             Name: doc.Name,
-            Data: [{Value: doc.Data[0].Value, TimeStamp: doc.Data[0].TimeStamp}]
+            Data: [{Value: doc.Data[0].Value, TimeStamp: doc.Data[0].TimeStamp}],
+            LastModified: Date.now()
         };
 
-        collection.update(modDoc,modDoc, {upsert: true}, function (err, record) {
+        collection.update({Name: doc.Name,
+            Data: [{Value: doc.Data[0].Value, TimeStamp: doc.Data[0].TimeStamp}]},modDoc, {upsert: true}, function (err, record) {
             //console.log('time to save:', doc);
             if (!err) {
             } else {
