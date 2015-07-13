@@ -14,10 +14,14 @@ var app = express();
             if (req.method === 'OPTIONS') return res.send(200)
         }
         next();
+
     });
 //});
+  
 
 app.get('/update', ethos.update);
+
+
 
 app.listen(5001);
 console.log('listening to port 5001');

@@ -18,6 +18,8 @@ db.open(function(err,db){
         console.log("OPENED DATA BASE");
     }
 });
+
+
 //PROMISE
 var Promise = require('promise');
 var startTime = Date.now();
@@ -101,7 +103,7 @@ function netSocket(){
         var connectionAttempt = 0;
         s.setEncoding('utf8');
         s.on('connect', function(a){
-            emailError('TEST ERROR EMAILING');
+         
             //CREATE SESSION AND RETRIEVE SESSION ID
             console.log('socket connect, time from start:', Date.now() - startTime);
             startTime = Date.now();
@@ -227,7 +229,8 @@ function bindSessionRequest(sessionId){
 
             s.on('end',function(){
                 console.log("end bind session triggered (prior to while loop), timestamp: ", Date.now());
-                if(batchString!==null && batchString!==undefined){
+                if(batch!==null && batch!==undefined){
+                    console.log('batch approved');
                      var batchString = batch.toString();
                     var batchObject = '';
                     var resultArray = batchString.match(/(\'{"Name).*("}\'\);)/g);
@@ -273,17 +276,18 @@ function bindSessionRequest(sessionId){
                         setTimeout(function(){
                             s.end();
                             s.connect({port:PORT, host:HOST});
-                         },60000);
+                         },5000);
                     }
                    
 
 
                 }else{
+                    console.log("batch called null/undefined: ", batch);
                     emailError("batch string is null or undefined in bind session now, reconnecting soon: "+Date.now());
                                             setTimeout(function(){
                             s.end();
                             s.connect({port:PORT, host:HOST});
-                         },60000);
+                         },1000);
                 }
                
 
@@ -312,21 +316,39 @@ function bindSessionRequest(sessionId){
 }
 
 function emailError(e){
-    var errorString = e.toString()+" /// timestamp: "+Date.now();
-    var Email = require('email').Email;
-    var myMsg = new Email({
-        from:"viviandiep268@gmail.com",
-        to:["vdiep@mit.edu", "sydneydo@mit.edu"],
-        subject:"ERROR - over ten attempts at iss-live",
-        body:errorString
-    });
-    myMsg.send(function(err){
-        if(err){
-            console.log('error sending email to vdiep@mit.edu');
-            console.log("email error message: ", err);
+    var nodemailer = require('nodemailer');
+    var transporter = nodemailer.createTransport({
+        service:'gmail',
+        auth:{
+            user:'issScraper@gmail.com',
+            pass:'scrapes247'
         }
     });
+
+    transporter.sendMail({
+        from:'issScraper@gmail.com',
+        to:'vdiep@mit.edu, sydneydo@mit.edu',
+        subject:"iss scraper message",
+        text: e
+    })
 }
+// function emailError(e){
+//     var errorString = e.toString()+" /// timestamp: "+Date.now();
+//     var Email = require('email').Email;
+//     var myMsg = new Email({
+//         from:"viviandiep268@gmail.com",
+//         to:["vdiep@mit.edu", "sydneydo@mit.edu"],
+//         subject:"ERROR - over ten attempts at iss-live",
+//         body:errorString
+//     });
+//     myMsg.send(function(err){
+//         if(err){
+//             console.log('error sending email to vdiep@mit.edu');
+//             console.log("email error message: ", err);
+
+//         }
+//     });
+// }
 function controlSessionRequest(sessionId){
 
     return new Promise(function(fulfill, reject){
