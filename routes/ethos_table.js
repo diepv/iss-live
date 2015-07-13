@@ -33,7 +33,7 @@ function start(){
 }
 
 
-exports.update = function(req,res){
+var update = exports.update = function(req,res){
     startTime = Date.now();
     console.log('about to start everyting, timestamp: ',startTime);
     function gogo(){
@@ -101,6 +101,7 @@ function netSocket(){
         var connectionAttempt = 0;
         s.setEncoding('utf8');
         s.on('connect', function(a){
+            emailError('TEST ERROR EMAILING');
             //CREATE SESSION AND RETRIEVE SESSION ID
             console.log('socket connect, time from start:', Date.now() - startTime);
             startTime = Date.now();
@@ -111,16 +112,38 @@ function netSocket(){
                 console.log('DATA RECEIVED, time from connection: ', Date.now() - startTime);
                 startTime = Date.now();
                 var sessionId = '';
-                var grabSub = d.substring(d.indexOf("start('") + "start('".length); // returns from start's end to the end of string.
-                var indexOfEnd = grabSub.indexOf("\'"); // get the index of the end of the session id, then test to make sure it's not 0.
-                if(indexOfEnd > 0){
-                    sessionId = grabSub.substring(0,indexOfEnd);
-                    console.log('session variable identified: ', sessionId);
-                    fulfill(sessionId);
+                if(d!==null && d!==undefined){
+                    if(d.length>1){
+                        var grabSub = d.substring(d.indexOf("start('") + "start('".length); // returns from start's end to the end of string.
+                        var indexOfEnd = grabSub.indexOf("\'"); // get the index of the end of the session id, then test to make sure it's not 0.
+                        if(indexOfEnd > 0){
+                            sessionId = grabSub.substring(0,indexOfEnd);
+                            console.log('session variable identified: ', sessionId);
+                            fulfill(sessionId);
+                        }else{
+                          setTimeout(function(){
+                            s.end();
+                            s.connect({port:PORT, host:HOST});
+                         },60000);
+                            //throw new Error("Create Session Response Bad. No Session ID Recognized. ");
+                        }
+                    }else{
+                         emailError('data received has length less than 1 '+Date.now());
+                         setTimeout(function(){
+                            s.end();
+                            s.connect({port:PORT, host:HOST});
+                         },60000);
+                    }
+                   
                 }else{
-                    reject("OH SHIT-CREATE SESSION ERROR");
-                    //throw new Error("Create Session Response Bad. No Session ID Recognized. ");
+                    emailError('on data, data received is null or undefined, new attempt will be made to fetch data now: '+Date.now());
+                         setTimeout(function(){
+                            s.end();
+                            s.connect({port:PORT, host:HOST});
+                         },60000);
+                    // s.connect({port:PORT, host:HOST});
                 }
+                
             });
 
             s.on('end',function(){
@@ -139,7 +162,9 @@ function netSocket(){
             if(connectionAttempt>10){
                 //send me an email..
                emailError(e);
+               reject("Could not reattempt -max attemts made.");
             }else{
+                s.end();
               s.connect({port:PORT, host:HOST});
             }
         });
@@ -179,59 +204,88 @@ function bindSessionRequest(sessionId){
             var bindSessionTime = 0;
 
             s.on('data', function(data){
-                console.log('data size: ',data.length);
-                bindSessionTime += (Date.now() - bindSessionTimeTracker);
-                bindSessionTimeTracker = Date.now();
-                //console.log(data);
-                if(data){
-                    //TO DO : create buffer for holding data before saving  - save in bulk in order to process data into database properly.
-                    batch += data;
+                if(data!==null && data!==undefined){
+                    
+                    bindSessionTime += (Date.now() - bindSessionTimeTracker);
+                    bindSessionTimeTracker = Date.now();
+                    //console.log(data);
+                    if(data){
+                         console.log('data size: ',data.length);
+                        //TO DO : create buffer for holding data before saving  - save in bulk in order to process data into database properly.
+                        batch += data;
+                    }else{
+                        console.log("ERROR in BIND SESSION");
+                    }
                 }else{
-                    console.log("ERROR in BIND SESSION");
+                    emailError("data is undefined or null in bind session now: "+Date.now());
+                    setTimeout(function(){
+                        s.end();
+                        s.connect({port:PORT,host:HOST});
+                    })
                 }
-
             });
 
             s.on('end',function(){
                 console.log("end bind session triggered (prior to while loop), timestamp: ", Date.now());
+                if(batchString!==null && batchString!==undefined){
+                     var batchString = batch.toString();
+                    var batchObject = '';
+                    var resultArray = batchString.match(/(\'{"Name).*("}\'\);)/g);
+                    if(resultArray.length>0){
+                        console.log("number of data segments",resultArray.length);
 
-                var batchString = batch.toString();
+                        resultArray.forEach(function(item,itemIndex){
+                            var jsonObject = item.substring(1,item.length-3);
+                            jsonObject = jsonObject.replace(/','+/g,",");
 
+                            //fs.appendFile('dataHold.txt', jsonObject, function (err) {
+                            //    if(err){
+                            //        console.log("..appending, error? : ",err);
+                            //    }else{
+                            //        //console.log('saved to file');
+                            //    }
+                            //
+                            //});
+                            if(itemIndex==resultArray.length-1){
+                                batchObject += jsonObject;
+                            }else{
+                                batchObject += jsonObject +",";
+                            }
+                         });
+                            batchObject = JSON.parse("["+batchObject+"]");
+                            console.log("batchObject parsed: ",batchObject.length);
+                            console.log('type of batchObject:',typeof batchObject);
+                            console.log('finished processing timestamp: ', Date.now());
+                            saveToDbSimple(batchObject, function(done){
+                                if(done == true){
+                                    console.log('done saving');
+                                    startTime = Date.now();
+                                    console.log('ended bind session, timestamp: ', startTime);
+                                    fulfill(true);
+                                }else{
+                                    emailError("database save error: "+done+" at timestamp: "+Date.now()+" .... data: "+batchString);
 
-                var batchObject = '';
-                var resultArray = batchString.match(/(\'{"Name).*("}\'\);)/g);
+                                }
 
-                console.log("number of data segments",resultArray.length);
-
-                resultArray.forEach(function(item,itemIndex){
-                    var jsonObject = item.substring(1,item.length-3);
-                    jsonObject = jsonObject.replace(/','+/g,",");
-
-                    //fs.appendFile('dataHold.txt', jsonObject, function (err) {
-                    //    if(err){
-                    //        console.log("..appending, error? : ",err);
-                    //    }else{
-                    //        //console.log('saved to file');
-                    //    }
-                    //
-                    //});
-                    if(itemIndex==resultArray.length-1){
-                        batchObject += jsonObject;
+                            });
                     }else{
-                        batchObject += jsonObject +",";
+                        emailError("batchString has no data array match in bind session now, reconnecting soon: "+Date.now());
+                        setTimeout(function(){
+                            s.end();
+                            s.connect({port:PORT, host:HOST});
+                         },60000);
                     }
+                   
 
-                });
-                batchObject = JSON.parse("["+batchObject+"]");
-                console.log("batchObject parsed: ",batchObject.length);
-                console.log('type of batchObject:',typeof batchObject);
-                console.log('finished processing timestamp: ', Date.now());
-                saveToDbSimple(batchObject, function(done){
-                    console.log('done saving');
-                    startTime = Date.now();
-                    console.log('ended bind session, timestamp: ', startTime);
-                    fulfill(true);
-                });
+
+                }else{
+                    emailError("batch string is null or undefined in bind session now, reconnecting soon: "+Date.now());
+                                            setTimeout(function(){
+                            s.end();
+                            s.connect({port:PORT, host:HOST});
+                         },60000);
+                }
+               
 
             });
         });
@@ -244,9 +298,13 @@ function bindSessionRequest(sessionId){
             var errorString = e.toString()+" /// timestamp: "+Date.now();
             if(connectionAttempt>10){
                 //send me an email..
-                emailError(e);
+                reject("ERRO in bind session");
+                emailError("error in bind session now:"+Date.now()+" , error: "+e);
             }else{
-                s.connect({port:PORT, host:HOST});
+               setTimeout(function(){
+                  s.end();
+                 s.connect({port:PORT, host:HOST});
+                },10000);
             }
         });
     });
@@ -258,13 +316,14 @@ function emailError(e){
     var Email = require('email').Email;
     var myMsg = new Email({
         from:"viviandiep268@gmail.com",
-        to:"vdiep@mit.edu",
+        to:["vdiep@mit.edu", "sydneydo@mit.edu"],
         subject:"ERROR - over ten attempts at iss-live",
         body:errorString
     });
     myMsg.send(function(err){
         if(err){
             console.log('error sending email to vdiep@mit.edu');
+            console.log("email error message: ", err);
         }
     });
 }
@@ -307,6 +366,7 @@ function controlSessionRequest(sessionId){
                     console.log("about to fulfill) with sessionId: ",sessionId);
                     fulfill(sessionId);
                 }else{
+                    emailError("error with control session at "+Date.now()+" , error msg: "+e);
                     reject(e);
                 }
 
@@ -321,7 +381,10 @@ function controlSessionRequest(sessionId){
                 //send me an email..
                 emailError(e);
             }else{
-                s.connect({port:PORT, host:HOST});
+                setTimeout(function(){
+                    s.end();
+                    s.connect({port:PORT, host:HOST});
+                 },60000);
             }
 
         });
@@ -360,6 +423,7 @@ function saveToDbSimple(document,callback){
             console.log('savetodbsimple error: ',error);
             console.log('savetodbsimple collection (error): ',collection);
             callback(error);
+            emailError("error accessing ethos collection in saveToDbSimple at "+Date.now()+" , error message: "+error);
         }
     });
 
@@ -378,6 +442,7 @@ function saveToDbSimple(document,callback){
             if (!err) {
             } else {
                 console.log("ERROR SAVING, err: ", err);
+                emailError("database save error at : "+Date.now()+" , error message: "+err);
             }
 
         });
