@@ -234,27 +234,19 @@ function bindSessionRequest(sessionId){
                      var batchString = batch.toString();
                     var batchObject = '';
                     var resultArray = batchString.match(/(\'{"Name).*("}\'\);)/g);
-                    if(resultArray.length>0){
-                        console.log("number of data segments",resultArray.length);
+                    if(resultArray!==null && resultArray!==undefined){
+                        if(resultArray.length>0){
+                            console.log("number of data segments",resultArray.length);
 
-                        resultArray.forEach(function(item,itemIndex){
-                            var jsonObject = item.substring(1,item.length-3);
-                            jsonObject = jsonObject.replace(/','+/g,",");
-
-                            //fs.appendFile('dataHold.txt', jsonObject, function (err) {
-                            //    if(err){
-                            //        console.log("..appending, error? : ",err);
-                            //    }else{
-                            //        //console.log('saved to file');
-                            //    }
-                            //
-                            //});
-                            if(itemIndex==resultArray.length-1){
-                                batchObject += jsonObject;
-                            }else{
-                                batchObject += jsonObject +",";
-                            }
-                         });
+                            resultArray.forEach(function(item,itemIndex){
+                                var jsonObject = item.substring(1,item.length-3);
+                                jsonObject = jsonObject.replace(/','+/g,",");
+                                if(itemIndex==resultArray.length-1){
+                                    batchObject += jsonObject;
+                                }else{
+                                    batchObject += jsonObject +",";
+                                }
+                            });
                             batchObject = JSON.parse("["+batchObject+"]");
                             console.log("batchObject parsed: ",batchObject.length);
                             console.log('type of batchObject:',typeof batchObject);
@@ -271,6 +263,8 @@ function bindSessionRequest(sessionId){
                                 }
 
                             });
+                        }
+
                     }else{
                         emailError("batchString has no data array match in bind session now, reconnecting soon: "+Date.now());
                         setTimeout(function(){
