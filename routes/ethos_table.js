@@ -27,9 +27,23 @@ var startTime = Date.now();
 var createSession = Promise.denodeify(netSocket);
 var controlSession = Promise.denodeify(controlSessionRequest);
 var bindSession = Promise.denodeify(bindSessionRequest);
+
 function start(){
     return new Promise(function(resolve,reject){
-       createSession().then(function(res){ return controlSession(res);}).then(function(resId){return bindSession(resId);}).done(function(boolStatus){resolve(boolStatus);});
+
+       //testPromise()
+       //    .then(function(fulfillRes){ return testPromise3();}, function(rejectRes){ return testPromise2();})
+       //    .catch(function(i){console.log("caught",i); reject(false);})
+       //    .done(function(){console.log("DONEDONEDONE");resolve(true);});
+        //
+        createSession()
+            .then(function(fulfillRes){return controlSession(fulfillRes);},
+                    function(rejectRes){return errorCaughtRestart(rejectRes);})
+            .then(function(fulfillRes){return bindSession(fulfillRes);},
+                    function(rejectRes){return errorCaughtRestart(rejectRes);})
+            .catch(function(oop){reject(oop);})
+            .done(function(status){resolve(status);});
+        //createSession().then(function(fulfillRes){ return controlSession(fulfillRes);}, function(rejectRes){ return reject('rejected'); }).then(function(resId){return bindSession(resId);}).done(function(boolStatus){resolve(boolStatus);});
     });
 
 }
@@ -39,48 +53,70 @@ var update = exports.update = function(req,res){
     startTime = Date.now();
     console.log('about to start everyting, timestamp: ',startTime);
     function gogo(){
-        start().done(function(done){
+        start().catch(function(onRejected){
+            console.log("REJECTED!!");
+            emailError("error occured, promise returned a rejection");
+        }).done(function(done){
             console.log('finished start promise: ',done);
             console.log('finished start promise timestamp:', Date.now());
         });
     }
-    setInterval(gogo,60000);
+    setInterval(gogo,1000);
 
 
 };
-
-function websocketTest(){
-    console.log("in web socket");
-    var HOST = "push1.jsc.nasa.gov";
-
-    //var socket = require('socket.io-client')(HOST);
-    //socket.connect(function(){})
-    //socket.on('connection', function(socketConn){
-    //    console.log('connected');
-    //    console.log(socketConn);
-    //    //socketConn.on('*',function(d){
-    //    //    console.log("***");
-    //    //    console.log(d);
-    //    //});
-        var io = require('socket.io')(HOST);
-        var ss = require('socket.io-stream');
-        var stream = ss.createStream();
-        io.on('connection', function(socket) {
-            console.log('connected socket');
-            ss(socket).on("*", function(stream, data) {
-                stream.pipe(fs.createWriteStream('test.txt'));
-            });
+function errorCaughtRestart(message){
+    return new Promise(function(fulfill,reject){
+        emailError(message, function(err,message){
+            if(err=='error'){
+                reject(message);
+            }else{
+                fulfill(err);
+            }
         });
-        //stream.pipe(fs.createWriteStream('file.txt'));
 
-    //});
-    //socket.on('event', function(data){});
-    //socket.on('disconnect', function(){});
+    });
 
-    //var PORT = "80";
-// Server
-//    var io = require('socket.io').listen(80);
+
 }
+//function websocketTest(){
+//    console.log("in web socket");
+//    var HOST = "push1.jsc.nasa.gov";
+//        var io = require('socket.io')(HOST);
+//        var ss = require('socket.io-stream');
+//        var stream = ss.createStream();
+//        io.on('connection', function(socket) {
+//            console.log('connected socket');
+//            ss(socket).on("*", function(stream, data) {
+//                stream.pipe(fs.createWriteStream('test.txt'));
+//            });
+//        });
+//}
+function testPromise(){
+
+    return new Promise(function(fulfill, reject){
+        console.log('1');
+        reject("promise1");
+    });
+
+}
+function testPromise2(){
+
+    return new Promise(function(fulfill, reject){
+        console.log('2');
+        reject("promise2");
+    });
+
+}
+function testPromise3(){
+
+    return new Promise(function(fulfill, reject){
+        console.log('3');
+        reject("promise3");
+    });
+
+}
+
 
 function netSocket(){
     return new Promise(function(fulfill, reject){
@@ -166,7 +202,7 @@ function netSocket(){
                emailError(e);
                reject("Could not reattempt -max attemts made.");
             }else{
-                s.end();
+              s.destroy();
               s.connect({port:PORT, host:HOST});
             }
         });
@@ -247,22 +283,26 @@ function bindSessionRequest(sessionId){
                                     batchObject += jsonObject +",";
                                 }
                             });
-                            batchObject = JSON.parse("["+batchObject+"]");
-                            console.log("batchObject parsed: ",batchObject.length);
-                            console.log('type of batchObject:',typeof batchObject);
-                            console.log('finished processing timestamp: ', Date.now());
-                            saveToDbSimple(batchObject, function(done){
-                                if(done == true){
-                                    console.log('done saving');
-                                    startTime = Date.now();
-                                    console.log('ended bind session, timestamp: ', startTime);
-                                    fulfill(true);
-                                }else{
-                                    emailError("database save error: "+done+" at timestamp: "+Date.now()+" .... data: "+batchString);
+                            try{
+                                batchObject = JSON.parse("["+batchObject+"]");
+                                console.log("batchObject parsed: ",batchObject.length);
+                                console.log('type of batchObject:',typeof batchObject);
+                                console.log('finished processing timestamp: ', Date.now());
+                                saveToDbSimple(batchObject, function(done){
+                                    if(done == true){
+                                        console.log('done saving');
+                                        startTime = Date.now();
+                                        console.log('ended bind session, timestamp: ', startTime);
+                                        fulfill(true);
+                                    }else{
+                                        emailError("database save error: "+done+" at timestamp: "+Date.now()+" .... data: "+batchString);
 
-                                }
+                                    }
 
-                            });
+                                });
+                            }catch(e){
+                                emailError("batch object unable to parse, not saving to database, batch object: "+batchObject+" --- error: "+ e.toString());
+                            }
                         }
 
                     }else{
@@ -309,7 +349,7 @@ function bindSessionRequest(sessionId){
 
 }
 
-function emailError(e){
+function emailError(e, callback){
     var nodemailer = require('nodemailer');
     var transporter = nodemailer.createTransport({
         service:'gmail',
@@ -324,7 +364,13 @@ function emailError(e){
         to:'vdiep@mit.edu, sydneydo@mit.edu',
         subject:"iss scraper message",
         text: e
-    })
+    }, function(error, info){
+        if(error){
+            callback("error","ERROR:"+error+" , MESSAGE:"+info.response);
+        }else{
+            callback("okay");
+        }
+    });
 }
 // function emailError(e){
 //     var errorString = e.toString()+" /// timestamp: "+Date.now();
