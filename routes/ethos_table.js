@@ -174,8 +174,10 @@ function netSocket(){
                 startTime = Date.now();
                 var sessionId = '';
                 if(d!==null && d!==undefined){
+                    console.log('d',d);
                     dataBatch += d;
                 }else{
+                    console.log("D REJECTED: ",d);
                     //reject('on data, data received is null or undefined in create session, now:  '+Date.now());
 
                 }
@@ -268,7 +270,7 @@ function bindSessionRequest(sessionId){
                     var batchObject = '';
                     if(batchString!==null && batchString!==undefined){
                         var resultArray = batchString.match(/(\'{"Name).*("}\'\);)/g);
-                        console.log("RESULT ARRAY",resultArray);
+                        //console.log("RESULT ARRAY",resultArray);
                         if(resultArray!==null && resultArray!==undefined){
                             console.log("number of data segments",resultArray.length);
 
@@ -281,8 +283,10 @@ function bindSessionRequest(sessionId){
                                     batchObject += jsonObject +",";
                                 }
                             });
+                            //console.log('batchObject',batchObject);
                             try{
                                 batchObject = JSON.parse("["+batchObject+"]");
+
                                 console.log("batchObject parsed: ",batchObject.length);
                                 console.log('type of batchObject:',typeof batchObject);
                                 console.log('finished processing timestamp: ', Date.now());
@@ -372,7 +376,7 @@ function controlSessionRequest(sessionId){
 
             s.on('data', function(data){
                 console.log("DATA FROM CONTROL SESSION, time since connection: ",Date.now() - startTime);
-                if(data!==null && data!==undefined && data.length>0){
+                if(data!==null && data!==undefined){
                     batch +=data;
                 }else{
                     //var errorString = "Error, data is null in control session. rejected promise. ";
