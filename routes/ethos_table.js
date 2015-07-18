@@ -41,6 +41,10 @@ function start(){
                     function(rejectRes){return errorCaughtRestart(rejectRes);})
             .then(function(fulfillRes){return bindSession(fulfillRes);},
                     function(rejectRes){return errorCaughtRestart(rejectRes);})
+            .catch(function(yikes){if(yikes){
+                console.log('yike: ',yikes);
+            }else{ console.log('cuaght error...dont have plan for what to do with it');}
+            })
             .done(function(status){resolve(status);});
         //createSession().then(function(fulfillRes){ return controlSession(fulfillRes);}, function(rejectRes){ return reject('rejected'); }).then(function(resId){return bindSession(resId);}).done(function(boolStatus){resolve(boolStatus);});
     });
