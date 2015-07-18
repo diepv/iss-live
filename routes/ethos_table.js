@@ -41,7 +41,6 @@ function start(){
                     function(rejectRes){return errorCaughtRestart(rejectRes);})
             .then(function(fulfillRes){return bindSession(fulfillRes);},
                     function(rejectRes){return errorCaughtRestart(rejectRes);})
-            .catch(function(oop){reject(oop);})
             .done(function(status){resolve(status);});
         //createSession().then(function(fulfillRes){ return controlSession(fulfillRes);}, function(rejectRes){ return reject('rejected'); }).then(function(resId){return bindSession(resId);}).done(function(boolStatus){resolve(boolStatus);});
     });
@@ -66,11 +65,12 @@ var update = exports.update = function(req,res){
 
 };
 function errorCaughtRestart(message){
-    return new Promise(function(fulfill,reject){
+    //return new Promise(function(fulfill,reject){
         console.log('error caught, message: '+message);
         emailError(message);
-        fulfill(err);
-    });
+    return message;
+    //    fulfill(err);
+    //});
 
 
 }
