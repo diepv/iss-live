@@ -228,7 +228,6 @@ function bindSessionRequest(sessionId){
         var HOST = "push1.jsc.nasa.gov";
         var PORT = 80;
         var net = require('net');
-        var connectionAttempt = 0;
 
         //net.createConnection();
         var s = new net.Socket();
@@ -246,20 +245,11 @@ function bindSessionRequest(sessionId){
                     
                     bindSessionTime += (Date.now() - bindSessionTimeTracker);
                     bindSessionTimeTracker = Date.now();
-                    //console.log(data);
-                    if(data){
-                         console.log('data size: ',data.length);
-                        //TO DO : create buffer for holding data before saving  - save in bulk in order to process data into database properly.
-                        batch += data;
-                    }else{
-                        console.log("ERROR in BIND SESSION");
-                    }
+                    console.log('data size: ',data.length);
+                    batch += data;
                 }else{
-                    emailError("data is undefined or null in bind session now: "+Date.now());
-                    setTimeout(function(){
-                        s.end();
-                        s.connect({port:PORT,host:HOST});
-                    })
+                    //emailError("data is undefined or null in bind session now: "+Date.now());
+                    reject("data is undefined or null, timestamp: "+Date.now());
                 }
             });
 
@@ -295,33 +285,28 @@ function bindSessionRequest(sessionId){
                                         console.log('ended bind session, timestamp: ', startTime);
                                         fulfill(true);
                                     }else{
-                                        emailError("database save error: "+done+" at timestamp: "+Date.now()+" .... data: "+batchString);
-
+                                        //emailError("database save error: "+done+" at timestamp: "+Date.now()+" .... data: "+batchString);
+                                        reject("database save error: "+done+" at timestamp: "+Date.now()+" .... data: "+batchString);
                                     }
 
                                 });
                             }catch(e){
-                                emailError("batch object unable to parse, not saving to database, batch object: "+batchObject+" --- error: "+ e.toString());
+                                //emailError("batch object unable to parse, not saving to database, batch object: "+batchObject+" --- error: "+ e.toString());
+                                reject("batch object unable to parse, not saving to database, batch object: "+batchObject+" --- error: "+ e.toString());
                             }
                         }
 
                     }else{
-                        emailError("batchString has no data array match in bind session now, reconnecting soon: "+Date.now());
-                        setTimeout(function(){
-                            s.end();
-                            s.connect({port:PORT, host:HOST});
-                         },5000);
+                        //emailError("batchString has no data array match in bind session now, reconnecting soon, now: "+Date.now());
+                        reject("batchString has no data array match in bind session now, reconnecting soon, now: "+Date.now());
                     }
                    
 
 
                 }else{
                     console.log("batch called null/undefined: ", batch);
-                    emailError("batch string is null or undefined in bind session now, reconnecting soon: "+Date.now());
-                                            setTimeout(function(){
-                            s.end();
-                            s.connect({port:PORT, host:HOST});
-                         },1000);
+                    //emailError("batch string is null or undefined in bind session now, reconnecting soon: "+Date.now());
+                    reject("batch string is null or undefined in bind session now, reconnecting soon: "+Date.now());
                 }
                
 
@@ -330,20 +315,10 @@ function bindSessionRequest(sessionId){
 
         s.connect({port:PORT,host:HOST});
         s.on('error', function(e){
-            connectionAttempt++;
-            console.log("ERR FROM BIND SESSION within connection event", e);
-            console.log("----Attempting to Reconnect, Trial #:", connectionAttempt);
-            var errorString = e.toString()+" /// timestamp: "+Date.now();
-            if(connectionAttempt>10){
+            var errorString ="error in bind session now:"+Date.now()+" , error: "+e
                 //send me an email..
-                reject("ERRO in bind session");
-                emailError("error in bind session now:"+Date.now()+" , error: "+e);
-            }else{
-               setTimeout(function(){
-                  s.end();
-                 s.connect({port:PORT, host:HOST});
-                },10000);
-            }
+                reject(errorString);
+                //emailError("error in bind session now:"+Date.now()+" , error: "+e);
         });
     });
 
@@ -411,8 +386,6 @@ function controlSessionRequest(sessionId){
         var HOST = "push1.jsc.nasa.gov";
         var PORT = 80;
         var net = require('net');
-        var connectionAttempt = 0;
-        //net.createConnection();
         var s = new net.Socket();
 
         s.setEncoding('utf8');
@@ -424,30 +397,22 @@ function controlSessionRequest(sessionId){
 
             s.on('data', function(data){
                 console.log("DATA FROM CONTROL SESSION, time since connection: ",Date.now() - startTime);
-                if(data){
+                if(data!==null && data!==undefined && data.length>0){
                     console.log("about to fulfill) with sessionId: ",sessionId);
                     fulfill(sessionId);
                 }else{
-                    emailError("error with control session at "+Date.now()+" , error msg: "+e);
-                    reject(e);
+                    var errorString = "Error, data is null in control session. rejected promise. ";
+                    //emailError(errorString);
+                    reject(errorString);
                 }
 
             });
         });
         s.on('error', function(e){
-            connectionAttempt++;
-            console.log("ERR FROM CONTROl SESSION within connection event", e);
-            console.log("----Attempting to Reconnect, Trial #:", connectionAttempt);
             var errorString = e.toString()+" /// timestamp: "+Date.now();
-            if(connectionAttempt>10){
                 //send me an email..
-                emailError(e);
-            }else{
-                setTimeout(function(){
-                    s.end();
-                    s.connect({port:PORT, host:HOST});
-                 },60000);
-            }
+                //emailError(e);
+               reject(errorString);
 
         });
 
@@ -482,10 +447,12 @@ function saveToDbSimple(document,callback){
             console.log('saved all');
             callback(true);
         }else{
-            console.log('savetodbsimple error: ',error);
-            console.log('savetodbsimple collection (error): ',collection);
-            callback(error);
             emailError("error accessing ethos collection in saveToDbSimple at "+Date.now()+" , error message: "+error);
+            console.log('savetodbsimple error: ',error);
+            console.log('savetodbsimple collection (from within error): ',collection);
+            console.log('savetodbsimple error timestamp: ',Date.now());
+            callback(false);
+
         }
     });
 
@@ -502,6 +469,7 @@ function saveToDbSimple(document,callback){
             Data: [{Value: doc.Data[0].Value, TimeStamp: doc.Data[0].TimeStamp}]},modDoc, {upsert: true}, function (err, record) {
             //console.log('time to save:', doc);
             if (!err) {
+
             } else {
                 console.log("ERROR SAVING, err: ", err);
                 emailError("database save error at : "+Date.now()+" , error message: "+err);
