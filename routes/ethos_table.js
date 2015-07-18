@@ -160,6 +160,7 @@ function netSocket(){
         //net.createConnection();
         var s = new net.Socket();
         s.setEncoding('utf8');
+        var dataBatch = '';
         s.on('connect', function(a){
          
             //CREATE SESSION AND RETRIEVE SESSION ID
@@ -173,30 +174,32 @@ function netSocket(){
                 startTime = Date.now();
                 var sessionId = '';
                 if(d!==null && d!==undefined){
-                    if(d.length>1){
-                        var grabSub = d.substring(d.indexOf("start('") + "start('".length); // returns from start's end to the end of string.
-                        var indexOfEnd = grabSub.indexOf("\'"); // get the index of the end of the session id, then test to make sure it's not 0.
-                        if(indexOfEnd > 0){
-                            sessionId = grabSub.substring(0,indexOfEnd);
-                            console.log('session variable identified: ', sessionId);
-                            fulfill(sessionId);
-                        }else{
-                            //throw new Error("Create Session Response Bad. No Session ID Recognized. ");
-                        }
-                    }else{
-                         //emailError('data received has length less than 1 '+Date.now());
-
-                    }
-                   
+                    dataBatch += d;
                 }else{
-                    reject('on data, data received is null or undefined in create session, now:  '+Date.now());
+                    //reject('on data, data received is null or undefined in create session, now:  '+Date.now());
 
                 }
                 
             });
 
             s.on('end',function(){
+                var d = dataBatch;
                 console.log('ended create session, timestamp: ', Date.now());
+                if(d.length>1){
+                    var grabSub = d.substring(d.indexOf("start('") + "start('".length); // returns from start's end to the end of string.
+                    var indexOfEnd = grabSub.indexOf("\'"); // get the index of the end of the session id, then test to make sure it's not 0.
+                    if(indexOfEnd > 0){
+                        sessionId = grabSub.substring(0,indexOfEnd);
+                        console.log('session variable identified: ', sessionId);
+                        fulfill(sessionId);
+                    }else{
+                        //throw new Error("Create Session Response Bad. No Session ID Recognized. ");
+                        reject('on data, data received is null or undefined in create session, now:  '+Date.now());
+                    }
+                }else{
+                    //emailError('data received has length less than 1 '+Date.now());
+
+                }
             });
 
         });
@@ -244,17 +247,17 @@ function bindSessionRequest(sessionId){
             var bindSessionTime = 0;
 
             s.on('data', function(data){
-                if(data!==null && data!==undefined){
+                //if(data!==null && data!==undefined){
                     
                     bindSessionTime += (Date.now() - bindSessionTimeTracker);
                     bindSessionTimeTracker = Date.now();
                     console.log('data size: ',data.length);
                     batch += data;
-                }else{
-                    console.log('data size: ', data);
-                    //emailError("data is undefined or null in bind session now: "+Date.now());
-                    //reject("data is undefined or null, timestamp: "+Date.now());
-                }
+                //}else{
+                //    console.log('data size: ', data);
+                //    //emailError("data is undefined or null in bind session now: "+Date.now());
+                //    //reject("data is undefined or null, timestamp: "+Date.now());
+                //}
             });
 
             s.on('end',function(){
@@ -265,6 +268,7 @@ function bindSessionRequest(sessionId){
                     var batchObject = '';
                     if(batchString!==null && batchString!==undefined){
                         var resultArray = batchString.match(/(\'{"Name).*("}\'\);)/g);
+                        console.log("RESULT ARRAY",resultArray);
                         if(resultArray!==null && resultArray!==undefined){
                             console.log("number of data segments",resultArray.length);
 
@@ -279,27 +283,27 @@ function bindSessionRequest(sessionId){
                             });
                             try{
                                 batchObject = JSON.parse("["+batchObject+"]");
+                                console.log("batchObject parsed: ",batchObject.length);
+                                console.log('type of batchObject:',typeof batchObject);
+                                console.log('finished processing timestamp: ', Date.now());
+                                if(batchObject!==null && batchObject!==undefined){
+                                    saveToDbSimple(batchObject, function(done){
+                                        if(done == true){
+                                            console.log('done saving');
+                                            startTime = Date.now();
+                                            console.log('ended bind session, timestamp: ', startTime);
+                                            fulfill(true);
+                                        }else{
+                                            //emailError("database save error: "+done+" at timestamp: "+Date.now()+" .... data: "+batchString);
+                                            reject("database save error: "+done+" at timestamp: "+Date.now()+" .... data: "+batchString);
+                                        }
+
+                                    });
+                                }
                             }catch(e){
                                 console.log('e');
                                 //emailError("batch object unable to parse, not saving to database, batch object: "+batchObject+" --- error: "+ e.toString());
                                 reject("batch object unable to parse, not saving to database, batch object: "+batchObject+" --- error: "+ e.toString());
-                            }
-                            console.log("batchObject parsed: ",batchObject.length);
-                            console.log('type of batchObject:',typeof batchObject);
-                            console.log('finished processing timestamp: ', Date.now());
-                            if(batchObject!==null && batchObject!==undefined){
-                                saveToDbSimple(batchObject, function(done){
-                                    if(done == true){
-                                        console.log('done saving');
-                                        startTime = Date.now();
-                                        console.log('ended bind session, timestamp: ', startTime);
-                                        fulfill(true);
-                                    }else{
-                                        //emailError("database save error: "+done+" at timestamp: "+Date.now()+" .... data: "+batchString);
-                                        reject("database save error: "+done+" at timestamp: "+Date.now()+" .... data: "+batchString);
-                                    }
-
-                                });
                             }
 
                         }
