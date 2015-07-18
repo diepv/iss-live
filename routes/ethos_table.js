@@ -67,14 +67,9 @@ var update = exports.update = function(req,res){
 };
 function errorCaughtRestart(message){
     return new Promise(function(fulfill,reject){
-        emailError(message, function(err,message){
-            if(err=='error'){
-                reject(message);
-            }else{
-                fulfill(err);
-            }
-        });
-
+        console.log('error caught, message: '+message);
+        emailError(message);
+        fulfill(err);
     });
 
 
@@ -304,8 +299,7 @@ function bindSessionRequest(sessionId){
 
 }
 
-function emailError(e,callback){
-    var ca = callback;
+function emailError(e){
     var nodemailer = require('nodemailer');
     var transporter = nodemailer.createTransport({
         service:'gmail',
@@ -322,11 +316,10 @@ function emailError(e,callback){
     }, function(error, info){
         if(error){
             console.log("error","ERROR:"+error+" , MESSAGE:"+info.response);
-            ca("error","ERROR:"+error+" , MESSAGE:"+info.response );
+
             //emailError(e);
         }else{
             console.log("okay");
-            ca("okay","");
         }
     });
 }
