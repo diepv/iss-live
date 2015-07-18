@@ -251,6 +251,7 @@ function bindSessionRequest(sessionId){
                     console.log('data size: ',data.length);
                     batch += data;
                 }else{
+                    console.log('data size: ', data);
                     //emailError("data is undefined or null in bind session now: "+Date.now());
                     //reject("data is undefined or null, timestamp: "+Date.now());
                 }
@@ -304,6 +305,7 @@ function bindSessionRequest(sessionId){
                         }
                         else{
                             //emailError("batchString has no data array match in bind session now, reconnecting soon, now: "+Date.now());
+                            console.log("something wrong with batchString, see: ",batchString);
                             reject("batchString has no data array match in bind session now, reconnecting soon, now: "+Date.now());
                         }
 
