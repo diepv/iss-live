@@ -61,7 +61,7 @@ var update = exports.update = function(req,res){
             console.log('finished start promise timestamp:', Date.now());
         });
     }
-    setInterval(gogo,1000);
+    setInterval(gogo,60000);
 
 
 };
