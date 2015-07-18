@@ -274,13 +274,14 @@ function bindSessionRequest(sessionId){
                             });
                             try{
                                 batchObject = JSON.parse("["+batchObject+"]");
-                                console.log("batchObject parsed: ",batchObject.length);
-                                console.log('type of batchObject:',typeof batchObject);
-                                console.log('finished processing timestamp: ', Date.now());
                             }catch(e){
+                                console.log('e');
                                 //emailError("batch object unable to parse, not saving to database, batch object: "+batchObject+" --- error: "+ e.toString());
                                 reject("batch object unable to parse, not saving to database, batch object: "+batchObject+" --- error: "+ e.toString());
                             }
+                            console.log("batchObject parsed: ",batchObject.length);
+                            console.log('type of batchObject:',typeof batchObject);
+                            console.log('finished processing timestamp: ', Date.now());
                             if(batchObject!==null && batchObject!==undefined){
                                 saveToDbSimple(batchObject, function(done){
                                     if(done == true){
