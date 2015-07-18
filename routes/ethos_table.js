@@ -112,6 +112,30 @@ function testPromise3(){
 
 }
 
+function emailError(e){
+    var nodemailer = require('nodemailer');
+    var transporter = nodemailer.createTransport({
+        service:'gmail',
+        auth:{
+            user:'issScraper@gmail.com',
+            pass:'scrapes247'
+        }
+    });
+    transporter.sendMail({
+        from:'issScraper@gmail.com',
+        to:'vdiep@mit.edu, sydneydo@mit.edu',
+        subject:"iss scraper message",
+        text: e
+    }, function(error, info){
+        if(error){
+            console.log("error","ERROR:"+error+" , MESSAGE:"+info.response);
+
+            //emailError(e);
+        }else{
+            console.log("okay");
+        }
+    });
+}
 
 function netSocket(){
     return new Promise(function(fulfill, reject){
@@ -232,11 +256,11 @@ function bindSessionRequest(sessionId){
                 console.log("end bind session triggered (prior to while loop), timestamp: ", Date.now());
                 if(batch!==null && batch!==undefined){
                     console.log('batch approved');
-                     var batchString = batch.toString();
+                    var batchString = batch.toString();
                     var batchObject = '';
-                    var resultArray = batchString.match(/(\'{"Name).*("}\'\);)/g);
-                    if(resultArray!==null && resultArray!==undefined){
-                        if(resultArray.length>0){
+                    if(batchString!==null && batchString!==undefined){
+                        var resultArray = batchString.match(/(\'{"Name).*("}\'\);)/g);
+                        if(resultArray!==null && resultArray!==undefined){
                             console.log("number of data segments",resultArray.length);
 
                             resultArray.forEach(function(item,itemIndex){
@@ -253,6 +277,11 @@ function bindSessionRequest(sessionId){
                                 console.log("batchObject parsed: ",batchObject.length);
                                 console.log('type of batchObject:',typeof batchObject);
                                 console.log('finished processing timestamp: ', Date.now());
+                            }catch(e){
+                                //emailError("batch object unable to parse, not saving to database, batch object: "+batchObject+" --- error: "+ e.toString());
+                                reject("batch object unable to parse, not saving to database, batch object: "+batchObject+" --- error: "+ e.toString());
+                            }
+                            if(batchObject!==null && batchObject!==undefined){
                                 saveToDbSimple(batchObject, function(done){
                                     if(done == true){
                                         console.log('done saving');
@@ -265,17 +294,16 @@ function bindSessionRequest(sessionId){
                                     }
 
                                 });
-                            }catch(e){
-                                //emailError("batch object unable to parse, not saving to database, batch object: "+batchObject+" --- error: "+ e.toString());
-                                reject("batch object unable to parse, not saving to database, batch object: "+batchObject+" --- error: "+ e.toString());
                             }
+
+                        }
+                        else{
+                            //emailError("batchString has no data array match in bind session now, reconnecting soon, now: "+Date.now());
+                            reject("batchString has no data array match in bind session now, reconnecting soon, now: "+Date.now());
                         }
 
-                    }else{
-                        //emailError("batchString has no data array match in bind session now, reconnecting soon, now: "+Date.now());
-                        reject("batchString has no data array match in bind session now, reconnecting soon, now: "+Date.now());
                     }
-                   
+
 
 
                 }else{
@@ -299,47 +327,7 @@ function bindSessionRequest(sessionId){
 
 }
 
-function emailError(e){
-    var nodemailer = require('nodemailer');
-    var transporter = nodemailer.createTransport({
-        service:'gmail',
-        auth:{
-            user:'issScraper@gmail.com',
-            pass:'scrapes247'
-        }
-    });
-    transporter.sendMail({
-        from:'issScraper@gmail.com',
-        to:'vdiep@mit.edu, sydneydo@mit.edu',
-        subject:"iss scraper message",
-        text: e
-    }, function(error, info){
-        if(error){
-            console.log("error","ERROR:"+error+" , MESSAGE:"+info.response);
 
-            //emailError(e);
-        }else{
-            console.log("okay");
-        }
-    });
-}
-// function emailError(e){
-//     var errorString = e.toString()+" /// timestamp: "+Date.now();
-//     var Email = require('email').Email;
-//     var myMsg = new Email({
-//         from:"viviandiep268@gmail.com",
-//         to:["vdiep@mit.edu", "sydneydo@mit.edu"],
-//         subject:"ERROR - over ten attempts at iss-live",
-//         body:errorString
-//     });
-//     myMsg.send(function(err){
-//         if(err){
-//             console.log('error sending email to vdiep@mit.edu');
-//             console.log("email error message: ", err);
-
-//         }
-//     });
-// }
 function controlSessionRequest(sessionId){
 
     return new Promise(function(fulfill, reject){
