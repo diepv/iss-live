@@ -304,7 +304,8 @@ function bindSessionRequest(sessionId){
 
 }
 
-function emailError(e, callback){
+function emailError(e,callback){
+    var ca = callback;
     var nodemailer = require('nodemailer');
     var transporter = nodemailer.createTransport({
         service:'gmail',
@@ -313,7 +314,6 @@ function emailError(e, callback){
             pass:'scrapes247'
         }
     });
-
     transporter.sendMail({
         from:'issScraper@gmail.com',
         to:'vdiep@mit.edu, sydneydo@mit.edu',
@@ -321,9 +321,12 @@ function emailError(e, callback){
         text: e
     }, function(error, info){
         if(error){
-            callback("error","ERROR:"+error+" , MESSAGE:"+info.response);
+            console.log("error","ERROR:"+error+" , MESSAGE:"+info.response);
+            ca("error","ERROR:"+error+" , MESSAGE:"+info.response );
+            //emailError(e);
         }else{
-            callback("okay");
+            console.log("okay");
+            ca("okay","");
         }
     });
 }
