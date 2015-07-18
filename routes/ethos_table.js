@@ -136,7 +136,6 @@ function netSocket(){
         var net = require('net');
         //net.createConnection();
         var s = new net.Socket();
-        var connectionAttempt = 0;
         s.setEncoding('utf8');
         s.on('connect', function(a){
          
@@ -159,27 +158,16 @@ function netSocket(){
                             console.log('session variable identified: ', sessionId);
                             fulfill(sessionId);
                         }else{
-                          setTimeout(function(){
-                            s.end();
-                            s.connect({port:PORT, host:HOST});
-                         },60000);
                             //throw new Error("Create Session Response Bad. No Session ID Recognized. ");
                         }
                     }else{
-                         emailError('data received has length less than 1 '+Date.now());
-                         setTimeout(function(){
-                            s.end();
-                            s.connect({port:PORT, host:HOST});
-                         },60000);
+                         //emailError('data received has length less than 1 '+Date.now());
+
                     }
                    
                 }else{
-                    emailError('on data, data received is null or undefined, new attempt will be made to fetch data now: '+Date.now());
-                         setTimeout(function(){
-                            s.end();
-                            s.connect({port:PORT, host:HOST});
-                         },60000);
-                    // s.connect({port:PORT, host:HOST});
+                    reject('on data, data received is null or undefined in create session, now:  '+Date.now());
+
                 }
                 
             });
@@ -193,18 +181,10 @@ function netSocket(){
         s.connect({port:PORT,host:HOST});
 
         s.on('error', function(e){
-            connectionAttempt++;
-            console.log("ERR FROM CREATE SESSION within connection event", e);
-            console.log("----Attempting to Reconnect, Trial #:", connectionAttempt);
             var errorString = e.toString()+" /// timestamp: "+Date.now();
-            if(connectionAttempt>10){
-                //send me an email..
-               emailError(e);
-               reject("Could not reattempt -max attemts made.");
-            }else{
-              s.destroy();
-              s.connect({port:PORT, host:HOST});
-            }
+
+               reject(errorString);
+
         });
 
     });
@@ -249,7 +229,7 @@ function bindSessionRequest(sessionId){
                     batch += data;
                 }else{
                     //emailError("data is undefined or null in bind session now: "+Date.now());
-                    reject("data is undefined or null, timestamp: "+Date.now());
+                    //reject("data is undefined or null, timestamp: "+Date.now());
                 }
             });
 
@@ -387,7 +367,7 @@ function controlSessionRequest(sessionId){
         var PORT = 80;
         var net = require('net');
         var s = new net.Socket();
-
+        var batch = '';
         s.setEncoding('utf8');
         s.on('connect', function(a){
             console.log("CONNECTED CONTROL SESSION, time form entering control session: ", Date.now() - startTime);
@@ -398,12 +378,11 @@ function controlSessionRequest(sessionId){
             s.on('data', function(data){
                 console.log("DATA FROM CONTROL SESSION, time since connection: ",Date.now() - startTime);
                 if(data!==null && data!==undefined && data.length>0){
-                    console.log("about to fulfill) with sessionId: ",sessionId);
-                    fulfill(sessionId);
+                    batch +=data;
                 }else{
-                    var errorString = "Error, data is null in control session. rejected promise. ";
-                    //emailError(errorString);
-                    reject(errorString);
+                    //var errorString = "Error, data is null in control session. rejected promise. ";
+                    ////emailError(errorString);
+                    //reject(errorString);
                 }
 
             });
@@ -417,7 +396,9 @@ function controlSessionRequest(sessionId){
         });
 
         s.on('end',function(){
+            console.log("about to fulfill) with sessionId: ",sessionId);
             console.log('ended control session, timestamp: ', Date.now());
+            fulfill(sessionId);
         });
         s.connect({port:PORT,host:HOST});
     });
