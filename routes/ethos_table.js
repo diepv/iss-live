@@ -160,7 +160,6 @@ function netSocket(){
         //net.createConnection();
         var s = new net.Socket();
         s.setEncoding('utf8');
-        var dataBatch = '';
         s.on('connect', function(a){
          
             //CREATE SESSION AND RETRIEVE SESSION ID
@@ -173,35 +172,28 @@ function netSocket(){
                 console.log('DATA RECEIVED, time from connection: ', Date.now() - startTime);
                 startTime = Date.now();
                 var sessionId = '';
-                if(d!==null && d!==undefined){
-                    console.log('d',d);
-                    dataBatch += d;
+                var grabSub = d.substring(d.indexOf("start('") + "start('".length); // returns from start's end to the end of string.
+                var indexOfEnd = grabSub.indexOf("\'"); // get the index of the end of the session id, then test to make sure it's not 0.
+                if(indexOfEnd > 0){
+                    sessionId = grabSub.substring(0,indexOfEnd);
+                    console.log('session variable identified: ', sessionId);
+                    fulfill(sessionId);
                 }else{
-                    console.log("D REJECTED: ",d);
+                    //throw new Error("Create Session Response Bad. No Session ID Recognized. ");
                     //reject('on data, data received is null or undefined in create session, now:  '+Date.now());
-
                 }
                 
             });
 
             s.on('end',function(){
-                var d = dataBatch;
+                //var d = dataBatch;
                 console.log('ended create session, timestamp: ', Date.now());
-                if(d.length>1){
-                    var grabSub = d.substring(d.indexOf("start('") + "start('".length); // returns from start's end to the end of string.
-                    var indexOfEnd = grabSub.indexOf("\'"); // get the index of the end of the session id, then test to make sure it's not 0.
-                    if(indexOfEnd > 0){
-                        sessionId = grabSub.substring(0,indexOfEnd);
-                        console.log('session variable identified: ', sessionId);
-                        fulfill(sessionId);
-                    }else{
-                        //throw new Error("Create Session Response Bad. No Session ID Recognized. ");
-                        reject('on data, data received is null or undefined in create session, now:  '+Date.now());
-                    }
-                }else{
-                    //emailError('data received has length less than 1 '+Date.now());
-
-                }
+                //if(d.length>1){
+                //
+                //}else{
+                //    //emailError('data received has length less than 1 '+Date.now());
+                //
+                //}
             });
 
         });
@@ -263,7 +255,8 @@ function bindSessionRequest(sessionId){
             });
 
             s.on('end',function(){
-                console.log("end bind session triggered (prior to while loop), timestamp: ", Date.now());
+                //console.log("END BIND SESSION, data: "+batch);
+                //console.log("end bind session triggered (prior to while loop), timestamp: ", Date.now());
                 if(batch!==null && batch!==undefined){
                     console.log('batch approved');
                     var batchString = batch.toString();
@@ -326,7 +319,7 @@ function bindSessionRequest(sessionId){
                     //emailError("batch string is null or undefined in bind session now, reconnecting soon: "+Date.now());
                     reject("batch string is null or undefined in bind session now, reconnecting soon: "+Date.now());
                 }
-               
+
 
             });
         });
@@ -377,7 +370,8 @@ function controlSessionRequest(sessionId){
             s.on('data', function(data){
                 console.log("DATA FROM CONTROL SESSION, time since connection: ",Date.now() - startTime);
                 if(data!==null && data!==undefined){
-                    batch +=data;
+                    //batch +=data;
+                    fulfill(sessionId);
                 }else{
                     //var errorString = "Error, data is null in control session. rejected promise. ";
                     ////emailError(errorString);
@@ -397,7 +391,7 @@ function controlSessionRequest(sessionId){
         s.on('end',function(){
             console.log("about to fulfill) with sessionId: ",sessionId);
             console.log('ended control session, timestamp: ', Date.now());
-            fulfill(sessionId);
+
         });
         s.connect({port:PORT,host:HOST});
     });
