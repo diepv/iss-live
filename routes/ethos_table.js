@@ -65,6 +65,7 @@ var update = exports.update = function(req,res){
         });
     }
     setInterval(gogo,60000);
+    res.status(200).send('done!');
 
 
 };
