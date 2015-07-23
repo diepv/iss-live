@@ -25,3 +25,4 @@ app.get('/update', ethos.update);
 
 app.listen(5001);
 console.log('listening to port 5001');
+ethos.callUpdate();

@@ -53,6 +53,10 @@ function start(){
 
 
 var update = exports.update = function(req,res){
+    callingUpdate();
+    res.status(200).send('done!');
+};
+var callUpdate = exports.callUpdate = function callingUpdate(){
     startTime = Date.now();
     console.log('about to start everyting, timestamp: ',startTime);
     function gogo(){
@@ -65,10 +69,7 @@ var update = exports.update = function(req,res){
         });
     }
     setInterval(gogo,60000);
-    res.status(200).send('done!');
-
-
-};
+}
 function errorCaughtRestart(message){
     //return new Promise(function(fulfill,reject){
         console.log('error caught, message: '+message);
