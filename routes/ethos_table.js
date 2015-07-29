@@ -66,10 +66,12 @@ var callUpdate = exports.callUpdate = function callingUpdate(){
         }).done(function(done){
             console.log('finished start promise: ',done);
             console.log('finished start promise timestamp:', Date.now());
+            gogo();
         });
     }
-    setInterval(gogo,60000);
-}
+    gogo();
+    //setInterval(gogo,60000);
+};
 function errorCaughtRestart(message){
     //return new Promise(function(fulfill,reject){
         console.log('error caught, message: '+message);
@@ -134,7 +136,8 @@ function emailError(e){
         text: e
     }, function(error, info){
         if(error){
-            console.log("error","ERROR:"+error+" , MESSAGE:"+info.response);
+            console.log("error","ERROR:"+error+" , MESSAGE:");
+            console.log(info.response);
 
             //emailError(e);
         }else{
@@ -207,6 +210,9 @@ function netSocket(){
 
                reject(errorString);
 
+        });
+        s.on('close', function(){
+            console.log("CREATE SESSION CLOSED, timestamp:",Date.now());
         });
 
     });
@@ -291,6 +297,7 @@ function bindSessionRequest(sessionId){
                                             console.log('done saving');
                                             startTime = Date.now();
                                             console.log('ended bind session, timestamp: ', startTime);
+                                            s.destroy();
                                             fulfill(true);
                                         }else{
                                             //emailError("database save error: "+done+" at timestamp: "+Date.now()+" .... data: "+batchString);
@@ -332,6 +339,9 @@ function bindSessionRequest(sessionId){
                 //send me an email..
                 reject(errorString);
                 //emailError("error in bind session now:"+Date.now()+" , error: "+e);
+        });
+        s.on('close', function(){
+           console.log("BIND SESSION CLOSED, timestamp:",Date.now());
         });
     });
 
@@ -396,6 +406,9 @@ function controlSessionRequest(sessionId){
 
         });
         s.connect({port:PORT,host:HOST});
+        s.on('close', function(){
+            console.log("CONTROL SESSION CLOSED, timestamp:",Date.now());
+        });
     });
 }
 /*
