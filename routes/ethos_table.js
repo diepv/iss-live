@@ -7,7 +7,7 @@ var Server = mongo.Server;
 //DATABASE HOOOOOKMEUP
 Db = mongo.Db;
 BSON = mongo.BSONPure;
-var dbname ='issLiveData';
+var dbname ='issLiveData2';
 var server = new Server('localhost',27017,{auto_reconnect:true, safe: true});
 var db = new Db(dbname, server, {safe:false});
 
@@ -58,11 +58,11 @@ var update = exports.update = function(req,res){
 };
 var callUpdate = exports.callUpdate = function callingUpdate(){
     startTime = Date.now();
-    console.log('about to start everyting, timestamp: ',startTime);
+    console.log('about to start everything, timestamp: ',startTime);
     function gogo(){
         start().catch(function(onRejected){
             console.log("REJECTED!!");
-            emailError("error occured, promise returned a rejection");
+            emailError("error occurred, promise returned a rejection");
         }).done(function(done){
             console.log('finished start promise: ',done);
             console.log('finished start promise timestamp:', Date.now());
@@ -168,7 +168,7 @@ function netSocket(){
         s.on('connect', function(a){
          
             //CREATE SESSION AND RETRIEVE SESSION ID
-            console.log('socket connect, time from start:', Date.now() - startTime);
+            // console.log('socket connect, time from start:', Date.now() - startTime);
             startTime = Date.now();
             createSessionRequest.forEach(function(line,lineIndex){
                 var successfulWrite = s.write(line);
@@ -266,7 +266,6 @@ function bindSessionRequest(sessionId){
                 //console.log("END BIND SESSION, data: "+batch);
                 //console.log("end bind session triggered (prior to while loop), timestamp: ", Date.now());
                 if(batch!==null && batch!==undefined){
-                    console.log('batch approved');
                     var batchString = batch.toString();
                     var batchObject = '';
                     if(batchString!==null && batchString!==undefined){
@@ -287,9 +286,9 @@ function bindSessionRequest(sessionId){
                             //console.log('batchObject',batchObject);
                             try{
                                 batchObject = JSON.parse("["+batchObject+"]");
-
-                                console.log("batchObject parsed: ",batchObject.length);
-                                console.log('type of batchObject:',typeof batchObject);
+                                //
+                                console.log("batchObject parsed length: ",batchObject.length);
+                                // console.log('type of batchObject:',typeof batchObject);
                                 console.log('finished processing timestamp: ', Date.now());
                                 if(batchObject!==null && batchObject!==undefined){
                                     saveToDbSimple(batchObject, function(done){
@@ -450,11 +449,12 @@ function saveToDbSimple(document,callback){
         //console.log('DOC: ', doc);
         var modDoc = {
             Name: doc.Name,
+					  Status: doc.Status,
             Data: [{Value: doc.Data[0].Value, TimeStamp: doc.Data[0].TimeStamp}],
             LastModified: Date.now()
         };
 
-        collection.update({Name: doc.Name,
+        collection.update({Name: doc.Name, Status: doc.Status,
             Data: [{Value: doc.Data[0].Value, TimeStamp: doc.Data[0].TimeStamp}]},modDoc, {upsert: true}, function (err, record) {
             //console.log('time to save:', doc);
             if (!err) {
@@ -467,7 +467,7 @@ function saveToDbSimple(document,callback){
         });
     }
 }
-function saveToDb(document, callback){
+/*function saveToDb(document, callback){
     console.log('document.length: ', document.length);
     console.log('save to db timestamp:  ',Date.now());
 
@@ -513,7 +513,7 @@ function saveToDb(document, callback){
     }
 
 
-}
+}*/
 
 function getEthosSet(){
    var nodeset =
