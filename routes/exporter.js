@@ -13,7 +13,7 @@ assert = require('assert');
 //DATABASE HOOOOOKMEUP
 Db = mongo.Db;
 BSON = mongo.BSONPure;
-var dbname ='issLiveData4';
+var dbname ='issLiveData6';
 var server = new Server('localhost',27017,{auto_reconnect:true, safe: true});
 var db = new Db(dbname, server, {safe:false});
 
