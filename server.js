@@ -1,5 +1,6 @@
 var express = require('express');
 var ethos = require('./routes/ethos_table');
+var dumper = require('./routes/exporter');
 
 var app = express();
 
@@ -20,8 +21,8 @@ var app = express();
   
 
 app.get('/update', ethos.update);
-
-
+// app.get('/chunkExport/:db', exporter.chunked);
+app.get('/chunkDump', dumper.chunkNdump);
 
 app.listen(5001);
 console.log('listening to port 5001');

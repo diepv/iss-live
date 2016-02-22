@@ -4,10 +4,18 @@ var phantom = require('phantom');
 var mongo = require('mongodb');
 var Server = mongo.Server;
 
+var ObjectID = require('mongodb').ObjectID,
+Binary = require('mongodb').Binary,
+GridStore = require('mongodb').GridStore,
+Grid = require('mongodb').Grid,
+Code = require('mongodb').Code,
+BSON = require('mongodb').pure().BSON,
+assert = require('assert');
+
 //DATABASE HOOOOOKMEUP
 Db = mongo.Db;
 BSON = mongo.BSONPure;
-var dbname ='issLiveData';
+var dbname ='issLiveData6';
 var server = new Server('localhost',27017,{auto_reconnect:true, safe: true});
 var db = new Db(dbname, server, {safe:false});
 
@@ -58,11 +66,11 @@ var update = exports.update = function(req,res){
 };
 var callUpdate = exports.callUpdate = function callingUpdate(){
     startTime = Date.now();
-    console.log('about to start everyting, timestamp: ',startTime);
+    console.log('about to start everything, timestamp: ',startTime);
     function gogo(){
         start().catch(function(onRejected){
             console.log("REJECTED!!");
-            emailError("error occured, promise returned a rejection");
+            emailError("error occurred, promise returned a rejection");
         }).done(function(done){
             console.log('finished start promise: ',done);
             console.log('finished start promise timestamp:', Date.now());
@@ -168,7 +176,7 @@ function netSocket(){
         s.on('connect', function(a){
          
             //CREATE SESSION AND RETRIEVE SESSION ID
-            console.log('socket connect, time from start:', Date.now() - startTime);
+            // console.log('socket connect, time from start:', Date.now() - startTime);
             startTime = Date.now();
             createSessionRequest.forEach(function(line,lineIndex){
                 var successfulWrite = s.write(line);
@@ -266,7 +274,6 @@ function bindSessionRequest(sessionId){
                 //console.log("END BIND SESSION, data: "+batch);
                 //console.log("end bind session triggered (prior to while loop), timestamp: ", Date.now());
                 if(batch!==null && batch!==undefined){
-                    console.log('batch approved');
                     var batchString = batch.toString();
                     var batchObject = '';
                     if(batchString!==null && batchString!==undefined){
@@ -287,9 +294,9 @@ function bindSessionRequest(sessionId){
                             //console.log('batchObject',batchObject);
                             try{
                                 batchObject = JSON.parse("["+batchObject+"]");
-
-                                console.log("batchObject parsed: ",batchObject.length);
-                                console.log('type of batchObject:',typeof batchObject);
+                                //
+                                console.log("batchObject parsed length: ",batchObject.length);
+                                // console.log('type of batchObject:',typeof batchObject);
                                 console.log('finished processing timestamp: ', Date.now());
                                 if(batchObject!==null && batchObject!==undefined){
                                     saveToDbSimple(batchObject, function(done){
@@ -307,7 +314,7 @@ function bindSessionRequest(sessionId){
                                     });
                                 }
                             }catch(e){
-                                console.log('e');
+                                console.log(e);
                                 //emailError("batch object unable to parse, not saving to database, batch object: "+batchObject+" --- error: "+ e.toString());
                                 reject("batch object unable to parse, not saving to database, batch object: "+batchObject+" --- error: "+ e.toString());
                             }
@@ -424,37 +431,46 @@ function controlSessionRequest(sessionId){
 */
 
 function saveToDbSimple(document,callback){
-    console.log('called saveToDbSimple with documentl ength: ', document.length);
+    console.log('called saveToDbSimple with documentl ength: ', Object.keys(document).length);
     console.log("first item in document: ", document[0]);
     console.log("typeof first item in document: ",typeof document[0]);
-    db.collection("ethos", function(error, collection) {
-        if (!error) {
-            console.log('no error, going to for each things');
-            document.forEach(function(doc,docIndex){
-                save(doc,collection);
-            });
-            console.log('saved all');
-            callback(true);
-        }else{
-            emailError("error accessing ethos collection in saveToDbSimple at "+Date.now()+" , error message: "+error);
-            console.log('savetodbsimple error: ',error);
-            console.log('savetodbsimple collection (from within error): ',collection);
-            console.log('savetodbsimple error timestamp: ',Date.now());
-            callback(false);
-
-        }
-    });
+        bulkUpsert(document, function(done){
+            if(done){
+                callback(true);
+            }else{
+                
+                console.log("bulkupsert NOT TRUE");
+            }
+        });
+    // db.collection("ethos", function(error, collection) {
+//         if (!error) {
+//             console.log('no error, going to for each things');
+//             document.forEach(function(doc,docIndex){
+//                 save(doc,collection);
+//             });
+//             console.log('saved all');
+//             callback(true);
+//         }else{
+//             emailError("error accessing ethos collection in saveToDbSimple at "+Date.now()+" , error message: "+error);
+//             console.log('savetodbsimple error: ',error);
+//             console.log('savetodbsimple collection (from within error): ',collection);
+//             console.log('savetodbsimple error timestamp: ',Date.now());
+//             callback(false);
+//
+//         }
+    // });
 
     function save(doc, collection) {
         //doc = JSON.parse(doc);
         //console.log('DOC: ', doc);
         var modDoc = {
             Name: doc.Name,
+                      Status: doc.Status,
             Data: [{Value: doc.Data[0].Value, TimeStamp: doc.Data[0].TimeStamp}],
             LastModified: Date.now()
         };
 
-        collection.update({Name: doc.Name,
+        collection.update({Name: doc.Name, Status: doc.Status,
             Data: [{Value: doc.Data[0].Value, TimeStamp: doc.Data[0].TimeStamp}]},modDoc, {upsert: true}, function (err, record) {
             //console.log('time to save:', doc);
             if (!err) {
@@ -466,8 +482,45 @@ function saveToDbSimple(document,callback){
 
         });
     }
+        
+        function bulkUpsert(docs, callback){
+            var col = db.collection('ethos');
+                // Initialize the unordered Batch
+            console.log('about to initialize unordered bulk op');
+            var batch = col.initializeUnorderedBulkOp({useLegacyOps: true});
+            
+            console.log('about to go through all docs for batch.upsert');
+      docs.forEach(function(doc,docIndex){
+               
+        var modDoc = {
+            Name: doc.Name,
+                      StatusClass: doc.Status.Class,
+            DataValue: doc.Data[0].Value,
+            DataTimeStamp: doc.Data[0].TimeStamp,
+            LastModified: Date.now()
+        };
+                // Add some operations to be executed in order
+                 // batch.find({a:2}).upsert().updateOne({$set: {b:2}});
+                // batch.find(modDoc).upsert().updateOne({$set: modDoc});
+                batch.insert(modDoc);
+      });
+            
+            console.log('about to execute batch');
+        // Execute the operations
+        batch.execute(function(err, result) {wm
+                if(err){
+                    console.log("**DB Batch Insert Error!: ", err);
+                    emailError("database save error at : "+Date.now()+" , error message: "+err);
+                    callback(false);
+                }else{
+                    callback(true);
+                }
+            });             
+            
+            
+        }
 }
-function saveToDb(document, callback){
+/*function saveToDb(document, callback){
     console.log('document.length: ', document.length);
     console.log('save to db timestamp:  ',Date.now());
 
@@ -513,7 +566,7 @@ function saveToDb(document, callback){
     }
 
 
-}
+}*/
 
 function getEthosSet(){
    var nodeset =
