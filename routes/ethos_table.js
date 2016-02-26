@@ -507,7 +507,7 @@ function saveToDbSimple(document,callback){
             
             console.log('about to execute batch');
         // Execute the operations
-        batch.execute(function(err, result) {wm
+        batch.execute(function(err, result) {
                 if(err){
                     console.log("**DB Batch Insert Error!: ", err);
                     emailError("database save error at : "+Date.now()+" , error message: "+err);

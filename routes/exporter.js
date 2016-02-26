@@ -11,19 +11,19 @@ BSON = require('mongodb').pure().BSON,
 assert = require('assert');
 
 //DATABASE HOOOOOKMEUP
-Db = mongo.Db;
-BSON = mongo.BSONPure;
-var dbname ='issLiveData6';
-var server = new Server('localhost',27017,{auto_reconnect:true, safe: true});
-var db = new Db(dbname, server, {safe:false});
+// Db = mongo.Db;
+// BSON = mongo.BSONPure;
+// var dbname ='issLiveData6';
+// var server = new Server('localhost',27017,{auto_reconnect:true, safe: true});
+// var db = new Db(dbname, server, {safe:false});
 
-db.open(function(err,db){
-    if(err){
-        console.log(err);
-    }else{
-        console.log("OPENED DATA BASE");
-    }
-});
+// db.open(function(err,db){
+//     if(err){
+//         console.log(err);
+//     }else{
+//         console.log("OPENED DATA BASE");
+//     }
+// });
 
 
 exports.chunkNdump = function(req,res){
@@ -47,7 +47,7 @@ exports.chunkNdump = function(req,res){
 	// db.collection('ethos', function(err,collection){
 
 		// if(!err){
-			wanted.forEach(item, index){
+			wanted.forEach(function(item, index){
 				// collection.find({"Name":item}).	
 				var mexport = spawn('mongoexport', ['--db issLiveData3 --collection ethos --limit 100 --type=csv --fields Name,StatusClass,StatusIndicator,StatusColor,DataValue,DataTimeStamp,LastModified --query \'{"Name":'+item+'}\' --out test.csv']);
 				res.set("Content-Type", 'text/plain');
@@ -60,7 +60,7 @@ exports.chunkNdump = function(req,res){
 					}
 
 				});
-			}
+			});
 
 
 		// }else{
@@ -88,7 +88,7 @@ var wantedNodes = function(dontwant,have){
 }
 
 
-var dontNeed = function()
+var dontNeed = function(){
 	var list = ["NODE2000001", "NODE2000002", "NODE2000006", "NODE2000007", "NODE3000012", "NODE3000013", "NODE3000017", "NODE3000019", "USLAB000056", "USLAB000057", "USLAB000060", "USLAB000061"];
 	return list;
 }
