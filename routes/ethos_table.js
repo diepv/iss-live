@@ -15,11 +15,8 @@ assert = require('assert');
 //DATABASE HOOOOOKMEUP
 Db = mongo.Db;
 BSON = mongo.BSONPure;
-<<<<<<< HEAD
-var dbname ='issLiveData3';
-=======
+
 var dbname ='issLiveData6';
->>>>>>> 7a882132cd7af160abdb748eb48d32db5281ffc5
 var server = new Server('localhost',27017,{auto_reconnect:true, safe: true});
 var db = new Db(dbname, server, {safe:false});
 
@@ -438,16 +435,6 @@ function saveToDbSimple(document,callback){
     console.log('called saveToDbSimple with documentl ength: ', Object.keys(document).length);
     console.log("first item in document: ", document[0]);
     console.log("typeof first item in document: ",typeof document[0]);
-<<<<<<< HEAD
-		bulkUpsert(document, function(done){
-			if(done){
-				callback(true);
-			}else{
-				
-				console.log("bulkupsert NOT TRUE");
-			}
-		});
-=======
         bulkUpsert(document, function(done){
             if(done){
                 callback(true);
@@ -456,7 +443,6 @@ function saveToDbSimple(document,callback){
                 console.log("bulkupsert NOT TRUE");
             }
         });
->>>>>>> 7a882132cd7af160abdb748eb48d32db5281ffc5
     // db.collection("ethos", function(error, collection) {
 //         if (!error) {
 //             console.log('no error, going to for each things');
@@ -497,50 +483,6 @@ function saveToDbSimple(document,callback){
 
         });
     }
-<<<<<<< HEAD
-		
-		function bulkUpsert(docs, callback){
-			var col = db.collection('ethos');
-			    // Initialize the unordered Batch
-			console.log('about to initialize unordered bulk op');
-			var batch = col.initializeUnorderedBulkOp({useLegacyOps: true});
-			
-			console.log('about to go through all docs for batch.upsert');
-      docs.forEach(function(doc,docIndex){
-				if(docIndex==1){
-					console.log(doc);
-				}
-        var modDoc = {
-            Name: doc.Name,
-					  StatusClass: doc.Status.Class,
-					  StatusIndicator: doc.Status.Indicator,
-					  StatusColor: doc.Status.Color,
-            DataValue: doc.Data[0].Value,
-						DataTimeStamp: doc.Data[0].TimeStamp,
-            LastModified: Date.now()
-        };
-				// Add some operations to be executed in order
-				 // batch.find({a:2}).upsert().updateOne({$set: {b:2}});
-				// batch.find(modDoc).upsert().updateOne({$set: modDoc});
-				batch.insert(modDoc);
-      });
-			
-			console.log('about to execute batch');
-	    // Execute the operations
-	    batch.execute(function(err, result) {
-				if(err){
-					console.log("**DB Batch Insert Error!: ", err);
-					emailError("database save error at : "+Date.now()+" , error message: "+err);
-					callback(false);
-				}else{
-					callback(true);
-				}
-			});				
-			
-			
-		}
-=======
-        
         function bulkUpsert(docs, callback){
             var col = db.collection('ethos');
                 // Initialize the unordered Batch
@@ -552,7 +494,7 @@ function saveToDbSimple(document,callback){
                
         var modDoc = {
             Name: doc.Name,
-                      StatusClass: doc.Status.Class,
+             StatusClass: doc.Status.Class,
             DataValue: doc.Data[0].Value,
             DataTimeStamp: doc.Data[0].TimeStamp,
             LastModified: Date.now()
@@ -565,7 +507,7 @@ function saveToDbSimple(document,callback){
             
             console.log('about to execute batch');
         // Execute the operations
-        batch.execute(function(err, result) {wm
+        batch.execute(function(err, result) {
                 if(err){
                     console.log("**DB Batch Insert Error!: ", err);
                     emailError("database save error at : "+Date.now()+" , error message: "+err);
@@ -577,7 +519,6 @@ function saveToDbSimple(document,callback){
             
             
         }
->>>>>>> 7a882132cd7af160abdb748eb48d32db5281ffc5
 }
 /*function saveToDb(document, callback){
     console.log('document.length: ', document.length);
