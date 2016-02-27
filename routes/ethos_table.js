@@ -15,6 +15,7 @@ assert = require('assert');
 //DATABASE HOOOOOKMEUP
 Db = mongo.Db;
 BSON = mongo.BSONPure;
+
 var dbname ='issLiveData6';
 var server = new Server('localhost',27017,{auto_reconnect:true, safe: true});
 var db = new Db(dbname, server, {safe:false});
@@ -482,7 +483,6 @@ function saveToDbSimple(document,callback){
 
         });
     }
-        
         function bulkUpsert(docs, callback){
             var col = db.collection('ethos');
                 // Initialize the unordered Batch
@@ -494,7 +494,7 @@ function saveToDbSimple(document,callback){
                
         var modDoc = {
             Name: doc.Name,
-                      StatusClass: doc.Status.Class,
+             StatusClass: doc.Status.Class,
             DataValue: doc.Data[0].Value,
             DataTimeStamp: doc.Data[0].TimeStamp,
             LastModified: Date.now()
